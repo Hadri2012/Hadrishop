@@ -1,0 +1,107 @@
+name: Tests et déploiement Firebase
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+      - name: Installer les dépendances
+        working-directory: functions
+        run: npm ci
+      - name: "Tests automatisés (aucun paiement réel, Stripe est remplacé par un faux client)"
+        working-directory: functions
+        run: npm test
+
+  deploy:
+    needs: test
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    env:
+      PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+    steps:
+      - name: Vérifier que les secrets sont configurés
+        id: check
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$SA" ] || [ -z "$PROJECT_ID" ]; then
+            echo "::warning::Secrets FIREBASE_SERVICE_ACCOUNT / FIREBASE_PROJECT_ID absents : déploiement ignoré (voir README)."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.check.outputs.ready == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.check.outputs.ready == 'true'
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+      - name: Installer les dépendances
+        if: steps.check.outputs.ready == 'true'
+        working-directory: functions
+        run: npm ci --omit=dev
+
+      - name: Générer functions/.env depuis les secrets GitHub (jamais commité)
+        if: steps.check.outputs.ready == 'true'
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          EXTRA_ORIGINS: ${{ secrets.EXTRA_ORIGINS }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          SMTP_URL: ${{ secrets.SMTP_URL }}
+          MAIL_FROM: ${{ secrets.MAIL_FROM }}
+          ADMIN_NOTIFY_EMAIL: ${{ secrets.ADMIN_NOTIFY_EMAIL }}
+          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+          GEOCODER: ${{ secrets.GEOCODER }}
+          GEOCODER_CONTACT: ${{ secrets.GEOCODER_CONTACT }}
+        run: |
+          node -e '
+            const e = process.env, p = e.PROJECT_ID;
+            const v = {
+              APP_URL: e.APP_URL || `https://${p}.web.app`,
+              EXTRA_ORIGINS: e.EXTRA_ORIGINS || `https://${p}.firebaseapp.com`,
+              STRIPE_SECRET_KEY: e.STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET: e.STRIPE_WEBHOOK_SECRET,
+              SMTP_URL: e.SMTP_URL, MAIL_FROM: e.MAIL_FROM, ADMIN_NOTIFY_EMAIL: e.ADMIN_NOTIFY_EMAIL,
+              ADMIN_EMAIL: e.ADMIN_EMAIL, GEOCODER: e.GEOCODER || "none", GEOCODER_CONTACT: e.GEOCODER_CONTACT,
+            };
+            const out = Object.entries(v).filter(([, x]) => x).map(([k, x]) => `${k}=${JSON.stringify(String(x))}`).join("\n") + "\n";
+            require("fs").writeFileSync("functions/.env", out, { mode: 0o600 });
+            for (const k of ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "SMTP_URL", "ADMIN_EMAIL"]) if (!v[k]) console.log(`::warning::Secret ${k} absent : la fonctionnalité correspondante restera désactivée.`);
+          '
+
+      - name: Clé du compte de service (fichier temporaire)
+        if: steps.check.outputs.ready == 'true'
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+
+      - name: Déployer (Functions, Hosting, règles Firestore et Storage)
+        if: steps.check.outputs.ready == 'true'
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: npx --yes firebase-tools@latest deploy --only functions,hosting,firestore:rules,storage --project "$PROJECT_ID" --force --non-interactive
+
+      - name: Nettoyage
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json" functions/.env

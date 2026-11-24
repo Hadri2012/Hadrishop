@@ -1,0 +1,31 @@
+{
+  "name": "hadrishop-functions",
+  "version": "2.0.0",
+  "private": true,
+  "description": "HADRISHOP sur Firebase (Cloud Functions + Firestore + Cloud Storage + Stripe)",
+  "main": "index.js",
+  "engines": {
+    "node": "22"
+  },
+  "scripts": {
+    "test": "node --test --test-concurrency=1 test/*.test.js",
+    "test:e2e": "node --test --test-concurrency=1 test-e2e/*.test.js"
+  },
+  "dependencies": {
+    "@fontsource/archivo": "^5.3.0",
+    "busboy": "^1.6.0",
+    "express": "^4.22.3",
+    "express-rate-limit": "^8.7.5",
+    "firebase-admin": "^14.5.1",
+    "firebase-functions": "^7.4.0",
+    "helmet": "^8.3.0",
+    "nodemailer": "^10.6.1",
+    "stripe": "^23.2.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^25.18.1",
+    "sharp": "^0.35.5",
+    "supertest": "^7.3.2"
+  }
+}

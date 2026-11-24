@@ -1,0 +1,19 @@
+{
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "runtime": "nodejs22",
+      "ignore": ["node_modules", "test", "test-e2e", "scripts", ".env.example", "*.log"]
+    }
+  ],
+  "hosting": {
+    "public": "hosting",
+    "cleanUrls": false,
+    "rewrites": [
+      { "source": "**", "function": { "functionId": "api", "region": "europe-west1" } }
+    ]
+  },
+  "firestore": { "rules": "firestore.rules" },
+  "storage": { "rules": "storage.rules" }
+}

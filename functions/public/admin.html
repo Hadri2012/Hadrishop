@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Administration — HADRISHOP</title>
+<style>
+/* VOICE: outil de gestion sobre et dense, comme le carnet de bord de l'atelier.
+   IDEA: tableau de bord d'atelier — chiffres d'abord, actions ensuite.
+   PICTURE: le graphique des ventes nettes par jour.
+   COLOUR and TYPE: blanc, encre, bleu cobalt pour l'action, orange pour ce qui demande attention ; Archivo.
+   LAYOUT: barre latérale de navigation, contenu en colonnes qui s'empilent sur mobile. */
+/*@FONTS@*/
+:root{color-scheme:light dark;--bg:light-dark(#f4f5f8,#0b0d12);--card:light-dark(#fff,#141821);--ink:light-dark(#14161a,#eef0f6);--muted:light-dark(#5b6070,#a3a9ba);
+ --line:light-dark(#e3e6ee,#262a36);--soft:light-dark(#f2f4f8,#1a1f2b);--blue:light-dark(#2340e6,#6b82ff);--orange:light-dark(#e2480f,#ff7a45);--ok:light-dark(#0f7a44,#4fd18b);--err:light-dark(#b3261e,#ff8a80)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Archivo,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+a{color:var(--blue)}
+h1{font-size:28px;margin:0 0 14px;line-height:1.1}h2{font-size:20px;margin:0 0 10px}h3{font-size:16px;margin:0 0 8px}
+.shell{display:grid;grid-template-columns:230px minmax(0,1fr);min-height:100vh}
+aside{background:var(--ink);color:var(--bg);padding:18px 12px;position:sticky;top:0;height:100vh;overflow:auto}
+aside .brand{font-weight:800;font-size:19px;padding:6px 10px 16px}
+aside a{display:flex;justify-content:space-between;color:inherit;text-decoration:none;padding:9px 10px;border-radius:8px;font-weight:600;opacity:.85}
+aside a[aria-current=page]{background:rgba(127,127,127,.25);opacity:1}
+aside .cnt{background:var(--orange);color:#fff;border-radius:99px;padding:0 7px;font-size:12px}
+main{padding:22px clamp(14px,3vw,34px)}
+@media(max-width:860px){.shell{grid-template-columns:minmax(0,1fr)}aside{position:static;height:auto;display:flex;flex-wrap:wrap;gap:4px}aside .brand{width:100%;padding-bottom:6px}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+.kpi b{display:block;font-size:24px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.kpi span{color:var(--muted);font-size:13px}
+.cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media(max-width:1000px){.cols{grid-template-columns:minmax(0,1fr)}}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12.5px;color:var(--muted);font-weight:600}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+tr.click{cursor:pointer}tr.click:hover{background:var(--soft)}
+.scroll{overflow-x:auto}
+button,.btn{font:inherit;font-weight:700;border:0;border-radius:9px;min-height:40px;padding:8px 14px;cursor:pointer;background:var(--blue);color:#fff;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+button:disabled{opacity:.5;cursor:not-allowed}
+.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+.danger{background:var(--err);color:#fff}
+.sm{min-height:32px;padding:4px 10px;font-size:13px}
+:focus-visible{outline:3px solid var(--orange);outline-offset:2px}
+input,select,textarea{font:inherit;font-size:15px;width:100%;padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);min-height:40px}
+textarea{min-height:100px;resize:vertical}
+label{display:block;font-weight:600;font-size:13px;margin:10px 0 4px}
+label.check{display:flex;gap:8px;align-items:center;font-weight:500}
+label.check input{width:18px;min-height:18px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:end}
+.row>*{flex:1 1 150px}
+.row>.auto{flex:0 0 auto}
+.pill{display:inline-block;border-radius:99px;padding:1px 9px;font-size:12.5px;font-weight:700;background:var(--soft);white-space:nowrap}
+.pill.ok{color:var(--ok)}.pill.warn{color:var(--orange)}.pill.err{color:var(--err)}
+.muted{color:var(--muted)}.small{font-size:13px}
+.notice{border-left:4px solid var(--blue);background:var(--soft);padding:10px 12px;border-radius:8px;margin:10px 0}
+.notice.err{border-color:var(--err)}
+.fig{position:relative;height:260px}.fig svg{position:absolute;inset:0;width:100%;height:100%}
+.thumbs{display:flex;gap:10px;flex-wrap:wrap}.thumbs figure{margin:0;width:110px}.thumbs img{width:110px;height:110px;object-fit:cover;border-radius:8px;background:var(--soft)}
+.toast{position:fixed;right:18px;bottom:18px;background:var(--ink);color:var(--bg);padding:12px 16px;border-radius:10px;z-index:50;max-width:420px}
+.toast.err{background:var(--err);color:#fff}
+.modal{position:fixed;inset:0;background:rgba(10,12,20,.55);display:grid;place-items:center;z-index:60;padding:16px}
+.modal>div{background:var(--card);border-radius:12px;padding:20px;max-width:440px;width:100%}
+.login{max-width:380px;margin:12vh auto}
+.vtable input{min-height:34px;padding:4px 6px}
+</style>
+</head>
+<body>
+<div id="root"><p style="padding:30px">Chargement…</p></div>
+<script>
+{
+const $ = (s, r = document) => r.querySelector(s);
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const eur = (c) => new Intl.NumberFormat('fr-BE', { style: 'currency', currency: 'EUR' }).format((c || 0) / 100);
+const fdt = (ts) => ts ? new Date(ts * 1000).toLocaleString('fr-BE', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+const fd = (ts) => ts ? new Date(ts * 1000).toLocaleDateString('fr-BE') : '—';
+const cents = (v) => { const n = Math.round(parseFloat(String(v).replace(/\s/g, '').replace(',', '.')) * 100); return Number.isFinite(n) ? n : null; };
+const euroIn = (c) => c == null ? '' : (c / 100).toFixed(2).replace('.', ',');
+const dateIn = (ts) => ts ? new Date(ts * 1000).toISOString().slice(0, 10) : '';
+const tsFrom = (d, end) => d ? Math.floor(new Date(d + (end ? 'T23:59:59' : 'T00:00:00')).getTime() / 1000) : null;
+const root = $('#root');
+let me = null, view = 'dashboard', counts = {};
+
+function toast(m, err) { const t = document.createElement('div'); t.className = 'toast' + (err ? ' err' : ''); t.setAttribute('role', 'status'); t.textContent = m; document.body.appendChild(t); setTimeout(() => t.remove(), 4500); }
+function ask(message, ok = 'Confirmer', danger) {
+  return new Promise((res) => { const m = document.createElement('div'); m.className = 'modal';
+    m.innerHTML = `<div role="dialog" aria-modal="true"><p>${esc(message)}</p><div class="row" style="justify-content:flex-end"><button class="ghost auto" data-v="0">Annuler</button><button class="auto ${danger ? 'danger' : ''}" data-v="1">${esc(ok)}</button></div></div>`;
+    m.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b || e.target === m) { m.remove(); res(!!b && b.dataset.v === '1'); } }); document.body.appendChild(m); });
+}
+async function api(path, opts = {}) {
+  const isForm = opts.body instanceof FormData;
+  const r = await fetch('/api' + path, { method: opts.method || 'GET', credentials: 'same-origin', headers: { 'X-Hadrishop': '1', ...(opts.body && !isForm ? { 'Content-Type': 'application/json' } : {}) }, body: isForm ? opts.body : opts.body ? JSON.stringify(opts.body) : undefined });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) { const e = new Error(d.error || 'Erreur ' + r.status); e.status = r.status; throw e; }
+  return d;
+}
+const run = async (fn, okMsg) => { try { const r = await fn(); if (okMsg) toast(okMsg); return r; } catch (e) { toast(e.message, true); if (e.status === 401) boot(); return undefined; } };
+const STATUS = { pending_payment: 'En attente de paiement', payment_processing: 'Paiement en cours', payment_failed: 'Paiement échoué', expired: 'Expirée', cancelled: 'Annulée', paid: 'Payée', in_production: 'En impression', shipped: 'Expédiée', ready_for_pickup: 'Prête à retirer', delivered: 'Livrée', completed: 'Terminée' };
+const PAY = { unpaid: ['Non payée', ''], paid: ['Payée', 'ok'], partially_refunded: ['Remb. partiel', 'warn'], refunded: ['Remboursée', 'err'] };
+const pill = (t, c = '') => `<span class="pill ${c}">${esc(t)}</span>`;
+
+const NAV = [['dashboard', 'Tableau de bord'], ['orders', 'Commandes', 'orders'], ['products', 'Produits'], ['categories', 'Catégories'], ['promos', 'Codes promo'], ['shipping', 'Livraison'],
+  ['custom', 'Sur mesure', 'custom_requests'], ['refunds', 'Remboursements', 'refund_requests'], ['customers', 'Clients'], ['newsletter', 'Newsletter'], ['emails', 'E-mails', 'failed_emails'], ['settings', 'Paramètres'], ['audit', 'Journal']];
+
+function shell() {
+  root.innerHTML = `<div class="shell"><aside><div class="brand">HADRISHOP · admin</div>
+    ${NAV.map(([k, l, c]) => `<a href="#${k}" ${view === k ? 'aria-current="page"' : ''}>${l}${c && counts[c] ? `<span class="cnt">${counts[c]}</span>` : ''}</a>`).join('')}
+    <a href="/" style="margin-top:14px">← Boutique</a><a href="#" id="logout">Déconnexion</a></aside><main id="main"><p class="muted">Chargement…</p></main></div>`;
+  $('#logout').addEventListener('click', async (e) => { e.preventDefault(); await api('/auth/logout', { method: 'POST' }).catch(() => {}); boot(); });
+}
+async function route() {
+  view = (location.hash.slice(1).split('-')[0]) || 'dashboard';
+  if (!VIEWS[view]) view = 'dashboard';
+  shell();
+  const main = $('#main');
+  try { await VIEWS[view](main, location.hash.slice(1).split('-').slice(1).join('-')); } catch (e) { main.innerHTML = `<div class="notice err">${esc(e.message)}</div>`; if (e.status === 401 || e.status === 403) boot(); }
+}
+
+// ---------- Tableau de bord ----------
+let days = 30;
+async function vDashboard(main) {
+  const s = await api('/admin/stats?days=' + days);
+  counts = s.to_process;
+  const t = s.totals;
+  main.innerHTML = `<div class="row" style="justify-content:space-between;align-items:center"><h1 class="auto" style="margin:0">Ventes nettes : ${eur(t.net_cents)} sur ${days} jours</h1>
+    <select id="days" class="auto" style="width:auto" aria-label="Période">${[7, 30, 90, 365].map((d) => `<option value="${d}" ${d === days ? 'selected' : ''}>${d} jours</option>`).join('')}</select></div>
+    <div class="kpis" style="margin-top:14px">
+      <div class="kpi"><span>Encaissé</span><b>${eur(t.gross_cents)}</b></div><div class="kpi"><span>Remboursé</span><b>${eur(t.refunds_cents)}</b></div>
+      <div class="kpi"><span>Commandes payées</span><b>${t.orders}</b></div><div class="kpi"><span>Panier moyen</span><b>${eur(t.average_order_cents)}</b></div>
+      <div class="kpi"><span>Membres Premium</span><b>${s.premium_members}</b><span>≈ ${eur(s.premium_mrr_estimate_cents)}/mois (estimation)</span></div>
+      <div class="kpi"><span>Clients · nouveaux (période)</span><b>${s.customers} · ${s.new_customers}</b></div>
+      <div class="kpi"><span>Abonnés newsletter</span><b>${s.newsletter_confirmed}</b></div><div class="kpi"><span>CA net depuis l'ouverture</span><b>${eur(s.all_time_net_cents)}</b></div></div>
+    <div class="card"><h2>Ventes nettes par jour</h2><div class="fig" id="chart"><svg></svg></div><p class="small muted">Encaissements Stripe confirmés moins remboursements réussis, par jour (heure de Bruxelles).</p></div>
+    <div class="cols"><div class="card"><h2>À traiter</h2><table><tbody>
+      <tr><td><a href="#orders">Commandes à préparer</a></td><td class="num">${counts.orders}</td></tr><tr><td><a href="#custom">Demandes sur mesure sans devis</a></td><td class="num">${counts.custom_requests}</td></tr>
+      <tr><td><a href="#refunds">Demandes de remboursement</a></td><td class="num">${counts.refund_requests}</td></tr><tr><td><a href="#emails">E-mails en échec</a></td><td class="num">${counts.failed_emails}</td></tr>
+      <tr><td><a href="#audit">Webhooks Stripe en échec</a></td><td class="num">${counts.failed_webhooks}</td></tr></tbody></table></div>
+    <div class="card"><h2>Meilleures ventes</h2>${s.top_products.length ? `<table><thead><tr><th>Produit</th><th class="num">Qté</th><th class="num">CA</th></tr></thead><tbody>${s.top_products.map((p) => `<tr><td>${esc(p.name)}</td><td class="num">${p.qty}</td><td class="num">${eur(p.revenue_cents)}</td></tr>`).join('')}</tbody></table>` : '<p class="muted">Aucune vente sur la période.</p>'}</div>
+    <div class="card"><h2>Stock bas</h2>${s.low_stock.length ? `<table><tbody>${s.low_stock.map((v) => `<tr><td><a href="#products-${v.product_id}">${esc(v.product)}</a> <span class="muted small">${esc(v.name)} · ${esc(v.sku)}</span></td><td class="num">${pill(v.stock, v.stock === 0 ? 'err' : 'warn')}</td></tr>`).join('')}</tbody></table>` : '<p class="muted">Aucune variante sous le seuil.</p>'}</div></div>`;
+  $('#days').addEventListener('change', (e) => { days = Number(e.target.value); route(); });
+  const svg = $('#chart svg');
+  const draw = () => {
+    const W = svg.clientWidth, H = svg.clientHeight; if (!W) return;
+    const d = s.daily, max = Math.max(1, ...d.map((x) => Math.max(x.net_cents, 0)));
+    const pad = { l: 56, r: 8, t: 10, b: 24 }, bw = (W - pad.l - pad.r) / d.length;
+    const y = (v) => pad.t + (H - pad.t - pad.b) * (1 - Math.max(v, 0) / max);
+    const ticks = [0, 0.5, 1].map((f) => Math.round(max * f));
+    svg.innerHTML = ticks.map((v) => `<line x1="${pad.l}" x2="${W - pad.r}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${pad.l - 6}" y="${y(v) + 4}" text-anchor="end" font-size="11" fill="var(--muted)">${esc(eur(v).replace(/,00/, ''))}</text>`).join('')
+      + d.map((x, i) => `<rect x="${pad.l + i * bw + bw * 0.15}" y="${y(x.net_cents)}" width="${Math.max(1, bw * 0.7)}" height="${Math.max(0, H - pad.b - y(x.net_cents))}" rx="2" fill="var(--blue)"><title>${esc(x.date)} : ${esc(eur(x.net_cents))} (${x.orders} cmd)</title></rect>`).join('')
+      + (W > 520 ? d.filter((_, i) => i % Math.ceil(d.length / 8) === 0).map((x) => { const i = d.indexOf(x); return `<text x="${pad.l + i * bw + bw / 2}" y="${H - 6}" text-anchor="middle" font-size="11" fill="var(--muted)">${esc(x.date.slice(5).split('-').reverse().join('/'))}</text>`; }).join('') : '');
+  };
+  draw(); new ResizeObserver(draw).observe($('#chart'));
+}
+
+// ---------- Commandes ----------
+let oFilter = { status: 'to_process', q: '' };
+async function vOrders(main, id) {
+  if (id) return orderDetail(main, id);
+  const list = await api('/admin/orders?' + new URLSearchParams(Object.entries(oFilter).filter(([, v]) => v)));
+  main.innerHTML = `<h1>Commandes</h1><div class="row"><select id="of-s"><option value="">Toutes</option><option value="to_process">À traiter</option>${Object.entries(STATUS).map(([k, l]) => `<option value="${k}">${l}</option>`).join('')}</select>
+    <input id="of-q" placeholder="N°, e-mail ou nom" value="${esc(oFilter.q)}"><button class="auto" id="of-go">Filtrer</button></div>
+    <div class="card scroll" style="margin-top:12px">${list.length ? `<table><thead><tr><th>N°</th><th>Client</th><th>Date</th><th>Statut</th><th>Paiement</th><th>Livraison</th><th class="num">Total</th></tr></thead><tbody>
+    ${list.map((o) => `<tr class="click" data-id="${o.id}"><td><a href="#orders-${o.id}">${esc(o.number)}</a></td><td>${esc(o.customer)}<br><span class="small muted">${esc(o.email)}</span></td><td>${fdt(o.created_at)}</td><td>${pill(o.status_label)}</td><td>${pill(...PAY[o.payment_status])}</td><td class="small">${esc(o.shipping_method || '—')}</td><td class="num">${eur(o.total_cents)}${o.refunded_cents ? `<br><span class="small muted">−${eur(o.refunded_cents)}</span>` : ''}</td></tr>`).join('')}</tbody></table>` : '<p class="muted">Aucune commande.</p>'}</div>`;
+  $('#of-s').value = oFilter.status;
+  const go = () => { oFilter = { status: $('#of-s').value, q: $('#of-q').value.trim() }; route(); };
+  $('#of-go').addEventListener('click', go); $('#of-s').addEventListener('change', go); $('#of-q').addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
+  main.querySelectorAll('tr[data-id]').forEach((tr) => tr.addEventListener('click', (e) => { if (!e.target.closest('a')) location.hash = 'orders-' + tr.dataset.id; }));
+}
+async function orderDetail(main, id) {
+  const o = await api('/admin/orders/' + id);
+  const paid = o.payment_status !== 'unpaid';
+  main.innerHTML = `<p><a href="#orders">← Commandes</a></p><h1>${esc(o.number)} ${pill(o.status_label)} ${pill(...PAY[o.payment_status])}</h1>
+  <div class="cols"><div>
+    <div class="card"><h2>Articles</h2><table><thead><tr><th>Article</th><th class="num">PU</th><th class="num">Qté</th><th class="num">Total</th></tr></thead><tbody>
+      ${o.items.map((i) => `<tr><td>${esc(i.product_name)}<br><span class="small muted">${esc(i.variant_name || '')} ${i.sku ? '· ' + esc(i.sku) : ''} · ${esc(i.type)}</span></td><td class="num">${eur(i.unit_price_cents)}</td><td class="num">${i.qty}</td><td class="num">${eur(i.line_total_cents)}</td></tr>`).join('')}</tbody></table>
+      <table style="margin-top:8px"><tbody><tr><td>Sous-total</td><td class="num">${eur(o.subtotal_cents)}</td></tr>${o.premium_discount_cents ? `<tr><td>Remise Premium</td><td class="num">−${eur(o.premium_discount_cents)}</td></tr>` : ''}${o.discount_cents ? `<tr><td>Code ${esc(o.promo_code)}</td><td class="num">−${eur(o.discount_cents)}</td></tr>` : ''}
+      <tr><td>Livraison (${esc(o.shipping_method || '—')})</td><td class="num">${eur(o.shipping_cents)}</td></tr><tr><th>Total</th><th class="num">${eur(o.total_cents)}</th></tr><tr><td>Remboursé</td><td class="num">${eur(o.refunded_cents)}</td></tr></tbody></table>
+      <p class="small muted">Client : <a href="#customers-${o.user_id}">${esc(o.customer)}</a> · ${esc(o.email)} · Stripe : ${esc(o.stripe_payment_intent || 'non payé')}</p>
+      ${o.customer_note ? `<div class="notice"><b>Note du client :</b> ${esc(o.customer_note)}</div>` : ''}</div>
+    <div class="card"><h2>Historique</h2><table><tbody>${o.events.map((e) => `<tr><td class="small">${fdt(e.created_at)}</td><td>${esc(e.message || e.type)} <span class="small muted">${esc(e.actor || '')}</span></td></tr>`).join('')}</tbody></table></div>
+    <div class="card"><h2>Note interne</h2><textarea id="o-note">${esc(o.admin_note || '')}</textarea><p><button id="o-note-save" class="ghost">Enregistrer la note</button></p></div>
+  </div><div>
+    ${paid ? `<div class="card"><h2>Statut et suivi</h2><label for="o-st">Statut</label><select id="o-st">${o.statuses.map((s) => `<option value="${s.value}" ${s.value === o.status ? 'selected' : ''}>${esc(s.label)}</option>`).join('')}</select>
+      <div class="row"><div><label for="o-car">Transporteur</label><input id="o-car" value="${esc(o.tracking_carrier || '')}"></div><div><label for="o-num">N° de suivi</label><input id="o-num" value="${esc(o.tracking_number || '')}"></div></div>
+      <label for="o-url">Lien de suivi (https://)</label><input id="o-url" value="${esc(o.tracking_url || '')}"><label for="o-msg">Message au client (facultatif)</label><input id="o-msg">
+      <p class="small muted">Le client reçoit un e-mail à chaque changement.</p><button id="o-st-save">Mettre à jour</button></div>` : '<div class="notice">Commande non payée : aucune action de préparation possible.</div>'}
+    ${o.needs_shipping ? `<div class="card"><h2>Adresse de livraison</h2>${o.ship_line1 ? `<p>${esc(o.ship_name)}<br>${esc(o.ship_line1)}${o.ship_line2 ? '<br>' + esc(o.ship_line2) : ''}<br>${esc(o.ship_postal)} ${esc(o.ship_city)} ${esc(o.ship_country || '')}${o.ship_phone ? '<br>' + esc(o.ship_phone) : ''}</p>` : '<p class="muted">Retrait sur place.</p>'}
+      <details><summary>Modifier l'adresse</summary><div class="row"><div><label>Nom</label><input id="a-name" value="${esc(o.ship_name || '')}"></div><div><label>Téléphone</label><input id="a-phone" value="${esc(o.ship_phone || '')}"></div></div>
+      <label>Rue et numéro</label><input id="a-line1" value="${esc(o.ship_line1 || '')}"><label>Complément</label><input id="a-line2" value="${esc(o.ship_line2 || '')}">
+      <div class="row"><div><label>Code postal</label><input id="a-postal" value="${esc(o.ship_postal || '')}"></div><div><label>Localité</label><input id="a-city" value="${esc(o.ship_city || '')}"></div></div><p><button id="a-save" class="ghost">Enregistrer l'adresse</button></p></details></div>` : ''}
+    ${paid ? `<div class="card"><h2>Rembourser</h2><p class="small">Remboursable : <b>${eur(o.refundable_cents)}</b> (via Stripe, vers le moyen de paiement d'origine).</p>
+      ${o.refundable_cents > 0 ? `<div class="row"><div><label for="r-amt">Montant (€)</label><input id="r-amt" inputmode="decimal" value="${euroIn(o.refundable_cents)}"></div><div><label for="r-reason">Motif</label><input id="r-reason"></div></div>
+      <label class="check"><input type="checkbox" id="r-restock"> Remettre les articles en stock (remboursement du solde uniquement)</label><p><button id="r-go" class="danger">Rembourser</button></p>` : ''}
+      ${o.refunds.length ? `<table><thead><tr><th>Date</th><th>Statut</th><th class="num">Montant</th></tr></thead><tbody>${o.refunds.map((r) => `<tr><td class="small">${fdt(r.created_at)}<br>${esc(r.reason || '')}${r.error ? `<br><span class="small" style="color:var(--err)">${esc(r.error)}</span>` : ''}</td><td>${pill(r.status, r.status === 'succeeded' ? 'ok' : r.status === 'failed' ? 'err' : 'warn')}</td><td class="num">${eur(r.amount_cents)}</td></tr>`).join('')}</tbody></table>` : ''}</div>` : ''}
+  </div></div>`;
+  const reload = () => orderDetail(main, id);
+  $('#o-note-save').addEventListener('click', () => run(() => api(`/admin/orders/${id}/note`, { method: 'PATCH', body: { admin_note: $('#o-note').value } }), 'Note enregistrée'));
+  const st = $('#o-st-save');
+  if (st) st.addEventListener('click', async () => { if (await run(() => api(`/admin/orders/${id}/status`, { method: 'POST', body: { status: $('#o-st').value, tracking_carrier: $('#o-car').value || null, tracking_number: $('#o-num').value || null, tracking_url: $('#o-url').value || null, message: $('#o-msg').value || null } }), 'Statut mis à jour, client notifié')) reload(); });
+  const as = $('#a-save');
+  if (as) as.addEventListener('click', async () => { const body = { name: $('#a-name').value, phone: $('#a-phone').value || null, line1: $('#a-line1').value, line2: $('#a-line2').value || null, postal_code: $('#a-postal').value, city: $('#a-city').value, country: 'BE' }; if (await run(() => api(`/admin/orders/${id}/address`, { method: 'PATCH', body }), 'Adresse modifiée, client notifié')) reload(); });
+  const rg = $('#r-go');
+  if (rg) rg.addEventListener('click', async () => {
+    const amount = cents($('#r-amt').value); if (!amount || amount <= 0) return toast('Montant invalide', true);
+    if (!(await ask(`Rembourser ${eur(amount)} sur la commande ${o.number} ? Cette opération Stripe est irréversible.`, 'Rembourser', true))) return;
+    rg.disabled = true;
+    if (await run(() => api(`/admin/orders/${id}/refunds`, { method: 'POST', body: { amount_cents: amount, reason: $('#r-reason').value || undefined, restock: $('#r-restock').checked } }), 'Remboursement envoyé à Stripe')) reload(); else rg.disabled = false;
+  });
+}
+
+// ---------- Produits ----------
+async function vProducts(main, id) {
+  if (id) return productEditor(main, id === 'nouveau' ? null : id);
+  const q = sessionStorage.getItem('pq') || '';
+  const list = await api('/admin/products?q=' + encodeURIComponent(q));
+  main.innerHTML = `<div class="row" style="justify-content:space-between"><h1 class="auto">Produits</h1><a class="btn auto" href="#products-nouveau">Nouveau produit</a></div>
+   <div class="row"><input id="p-q" placeholder="Rechercher" value="${esc(q)}"></div>
+   <div class="card scroll" style="margin-top:12px">${list.length ? `<table><thead><tr><th></th><th>Produit</th><th>Type</th><th>Catégorie</th><th class="num">Prix dès</th><th class="num">Stock</th><th>État</th></tr></thead><tbody>
+   ${list.map((p) => `<tr class="click" data-id="${p.id}"><td>${p.image ? `<img src="${esc(p.image)}" alt="" width="44" height="44" style="object-fit:cover;border-radius:6px">` : ''}</td><td><a href="#products-${p.id}">${esc(p.name)}</a><br><span class="small muted">${p.variants} variante(s)</span></td><td>${p.type === 'digital' ? 'STL' : 'Physique'}</td><td>${esc(p.category || '—')}</td><td class="num">${eur(p.price_from)}</td><td class="num">${p.type === 'digital' ? '∞' : p.stock_total ?? '∞'}</td><td>${p.active ? pill('En ligne', 'ok') : pill('Masqué')} ${p.featured ? pill('À la une') : ''} ${p.premium_only ? pill('Premium', 'warn') : ''}</td></tr>`).join('')}</tbody></table>` : '<p class="muted">Aucun produit.</p>'}</div>`;
+  $('#p-q').addEventListener('keydown', (e) => { if (e.key === 'Enter') { sessionStorage.setItem('pq', e.target.value); route(); } });
+  main.querySelectorAll('tr[data-id]').forEach((tr) => tr.addEventListener('click', (e) => { if (!e.target.closest('a')) location.hash = 'products-' + tr.dataset.id; }));
+}
+async function productEditor(main, id) {
+  const [p, cats] = await Promise.all([id ? api('/admin/products/' + id) : Promise.resolve({ name: '', slug: '', description: '', type: 'physical', active: 1, featured: 0, premium_only: 0, category_id: null, material: '', variants: [{ sku: '', name: 'Standard', price_cents: 0, compare_at_cents: null, stock: 0, active: 1 }], images: [], files: [] }), api('/admin/categories')]);
+  let variants = p.variants.map((v) => ({ ...v }));
+  const vRows = () => variants.map((v, i) => `<tr><td><input data-v="${i}" data-f="sku" value="${esc(v.sku)}" aria-label="SKU"></td><td><input data-v="${i}" data-f="name" value="${esc(v.name)}" aria-label="Nom"></td>
+    <td><input data-v="${i}" data-f="price" value="${euroIn(v.price_cents)}" inputmode="decimal" aria-label="Prix"></td><td><input data-v="${i}" data-f="compare" value="${euroIn(v.compare_at_cents)}" inputmode="decimal" aria-label="Prix barré"></td>
+    <td>${$('#pe-type') && $('#pe-type').value === 'digital' ? '<span class="muted">—</span>' : `<input data-v="${i}" data-f="stock" value="${v.stock ?? ''}" inputmode="numeric" placeholder="∞" aria-label="Stock">`}${v.reserved ? `<div class="small muted">${v.reserved} réservé(s)</div>` : ''}</td>
+    <td><input type="checkbox" data-v="${i}" data-f="active" ${v.active ? 'checked' : ''} aria-label="Active"></td><td><button class="ghost sm" data-delv="${i}" aria-label="Retirer">✕</button></td></tr>`).join('');
+  main.innerHTML = `<p><a href="#products">← Produits</a></p><h1>${id ? esc(p.name) : 'Nouveau produit'}</h1>
+  <div class="cols"><div class="card"><h2>Informations</h2>
+    <label for="pe-name">Nom</label><input id="pe-name" value="${esc(p.name)}">
+    <div class="row"><div><label for="pe-slug">Slug (URL)</label><input id="pe-slug" value="${esc(p.slug)}" placeholder="automatique"></div><div><label for="pe-cat">Catégorie</label><select id="pe-cat"><option value="">—</option>${cats.map((c) => `<option value="${c.id}" ${c.id === p.category_id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></div></div>
+    <div class="row"><div><label for="pe-type">Type</label><select id="pe-type"><option value="physical">Objet imprimé</option><option value="digital" ${p.type === 'digital' ? 'selected' : ''}>Fichier STL numérique</option></select></div><div><label for="pe-mat">Matériau</label><input id="pe-mat" value="${esc(p.material || '')}"></div></div>
+    <label for="pe-desc">Description</label><textarea id="pe-desc" style="min-height:160px">${esc(p.description)}</textarea>
+    <label class="check"><input type="checkbox" id="pe-active" ${p.active ? 'checked' : ''}> En ligne</label><label class="check"><input type="checkbox" id="pe-feat" ${p.featured ? 'checked' : ''}> Mis en avant</label><label class="check"><input type="checkbox" id="pe-prem" ${p.premium_only ? 'checked' : ''}> Réservé aux membres Premium</label></div>
+  <div class="card"><h2>Variantes, prix et stock</h2><div class="scroll"><table class="vtable"><thead><tr><th>SKU</th><th>Nom</th><th>Prix €</th><th>Prix barré €</th><th>Stock</th><th>Active</th><th></th></tr></thead><tbody id="vbody">${vRows()}</tbody></table></div>
+    <p><button class="ghost sm" id="addv">+ Variante</button></p><p class="small muted">Stock vide = non suivi (illimité). Le stock ne peut jamais devenir négatif ; les réservations de 15 minutes sont déduites automatiquement.</p>
+    ${id ? '<h3 style="margin-top:14px">Ajustement rapide du stock</h3><div class="row">' + variants.filter((v) => v.stock != null && v.id).map((v) => `<div><label>${esc(v.sku)} (${v.stock})</label><div class="row"><input id="adj-${v.id}" inputmode="numeric" placeholder="+5 ou −2"><button class="ghost sm auto" data-adj="${v.id}">Appliquer</button></div></div>`).join('') + '</div>' : ''}</div></div>
+  <p><button id="pe-save">${id ? 'Enregistrer' : 'Créer le produit'}</button> ${id ? '<button id="pe-del" class="ghost">Supprimer / archiver</button>' : ''}</p>
+  ${id ? `<div class="cols"><div class="card"><h2>Photos</h2><div class="thumbs">${p.images.map((im, n) => `<figure><img src="${esc(im.url)}" alt=""><div class="row" style="gap:4px;margin-top:4px"><button class="ghost sm auto" data-mv="${n}" data-d="-1" aria-label="Avant">←</button><button class="ghost sm auto" data-mv="${n}" data-d="1" aria-label="Après">→</button><button class="ghost sm auto" data-delimg="${im.id}" aria-label="Supprimer">✕</button></div></figure>`).join('') || '<p class="muted">Aucune photo.</p>'}</div>
+    <label for="pe-img">Ajouter (PNG, JPEG, WebP · 10 Mo max.)</label><input id="pe-img" type="file" multiple accept="image/png,image/jpeg,image/webp"><input id="pe-alt" placeholder="Texte alternatif (accessibilité)" style="margin-top:6px"><p><button class="ghost" id="pe-up">Téléverser</button></p></div>
+    ${p.type === 'digital' ? `<div class="card"><h2>Fichiers STL vendus</h2>${p.files.map((f) => `<p>${esc(f.original_name)} <span class="small muted">${(f.size / 1048576).toFixed(2)} Mo</span> <button class="ghost sm" data-delfile="${f.id}">Supprimer</button></p>`).join('') || '<p class="muted">Aucun fichier : le produit ne doit pas être mis en vente sans fichier.</p>'}
+      <label for="pe-stl">Ajouter (STL, 3MF, OBJ · 200 Mo max.)</label><input id="pe-stl" type="file" multiple accept=".stl,.3mf,.obj"><p><button class="ghost" id="pe-stl-up">Téléverser</button></p></div>` : ''}</div>` : ''}`;
+  const vbody = $('#vbody');
+  const sync = () => vbody.querySelectorAll('[data-v]').forEach((el) => { const v = variants[el.dataset.v]; const f = el.dataset.f;
+    if (f === 'active') v.active = el.checked ? 1 : 0; else if (f === 'price') v.price_cents = cents(el.value); else if (f === 'compare') v.compare_at_cents = el.value.trim() ? cents(el.value) : null;
+    else if (f === 'stock') v.stock = el.value.trim() === '' ? null : Number(el.value); else v[f] = el.value; });
+  const redraw = () => { sync(); vbody.innerHTML = vRows(); bindV(); };
+  const bindV = () => vbody.querySelectorAll('[data-delv]').forEach((b) => b.addEventListener('click', () => { sync(); if (variants.length > 1) { variants.splice(Number(b.dataset.delv), 1); vbody.innerHTML = vRows(); bindV(); } else toast('Au moins une variante est requise', true); }));
+  bindV();
+  $('#addv').addEventListener('click', () => { sync(); variants.push({ sku: '', name: '', price_cents: 0, compare_at_cents: null, stock: $('#pe-type').value === 'digital' ? null : 0, active: 1 }); vbody.innerHTML = vRows(); bindV(); });
+  $('#pe-type').addEventListener('change', () => { sync(); if ($('#pe-type').value === 'digital') variants.forEach((v) => { v.stock = null; }); vbody.innerHTML = vRows(); bindV(); });
+  $('#pe-save').addEventListener('click', async () => {
+    sync();
+    if (variants.some((v) => v.price_cents == null)) return toast('Prix invalide', true);
+    const body = { name: $('#pe-name').value, slug: $('#pe-slug').value || undefined, category_id: $('#pe-cat').value || null, type: $('#pe-type').value, material: $('#pe-mat').value || null,
+      description: $('#pe-desc').value, active: $('#pe-active').checked, featured: $('#pe-feat').checked, premium_only: $('#pe-prem').checked,
+      variants: variants.map((v) => ({ id: v.id, sku: v.sku, name: v.name, price_cents: v.price_cents, compare_at_cents: v.compare_at_cents, stock: $('#pe-type').value === 'digital' ? null : v.stock, active: !!v.active })) };
+    const r = await run(() => api(id ? '/admin/products/' + id : '/admin/products', { method: id ? 'PUT' : 'POST', body }), 'Produit enregistré');
+    if (r) { if (!id) location.hash = 'products-' + r.id; else route(); }
+  });
+  const del = $('#pe-del');
+  if (del) del.addEventListener('click', async () => { if (!(await ask('Supprimer ce produit ? S’il a déjà été vendu, il sera seulement masqué (historique conservé).', 'Supprimer', true))) return; const r = await run(() => api('/admin/products/' + id, { method: 'DELETE' })); if (r) { toast(r.archived ? 'Produit archivé (déjà vendu)' : 'Produit supprimé'); location.hash = 'products'; } });
+  main.querySelectorAll('[data-adj]').forEach((b) => b.addEventListener('click', async () => { const d = Number($('#adj-' + b.dataset.adj).value.replace('−', '-').replace('+', '')); if (!Number.isInteger(d) || !d) return toast('Indiquez un nombre entier', true); if (await run(() => api(`/admin/variants/${b.dataset.adj}/stock`, { method: 'POST', body: { delta: d } }), 'Stock ajusté')) route(); }));
+  const up = $('#pe-up');
+  if (up) up.addEventListener('click', async () => { const files = $('#pe-img').files; if (!files.length) return; const fd = new FormData(); for (const f of files) fd.append('images', f); fd.append('alt', $('#pe-alt').value); if (await run(() => api(`/admin/products/${id}/images`, { method: 'POST', body: fd }), 'Photos ajoutées')) route(); });
+  main.querySelectorAll('[data-delimg]').forEach((b) => b.addEventListener('click', async () => { if (await ask('Supprimer cette photo ?', 'Supprimer', true) && await run(() => api(`/admin/products/${id}/images/` + b.dataset.delimg, { method: 'DELETE' }))) route(); }));
+  main.querySelectorAll('[data-mv]').forEach((b) => b.addEventListener('click', async () => { const ids = p.images.map((i) => i.id); const n = Number(b.dataset.mv), m = n + Number(b.dataset.d); if (m < 0 || m >= ids.length) return; [ids[n], ids[m]] = [ids[m], ids[n]]; if (await run(() => api(`/admin/products/${id}/images/order`, { method: 'PUT', body: { ids } }))) route(); }));
+  const su = $('#pe-stl-up');
+  if (su) su.addEventListener('click', async () => { const files = $('#pe-stl').files; if (!files.length) return; const fd = new FormData(); for (const f of files) fd.append('files', f); if (await run(() => api(`/admin/products/${id}/files`, { method: 'POST', body: fd }), 'Fichier ajouté')) route(); });
+  main.querySelectorAll('[data-delfile]').forEach((b) => b.addEventListener('click', async () => { if (await ask('Supprimer ce fichier ?', 'Supprimer', true) && await run(() => api(`/admin/products/${id}/files/` + b.dataset.delfile, { method: 'DELETE' }), 'Fichier supprimé')) route(); }));
+}
+
+// ---------- Catégories ----------
+async function vCategories(main) {
+  const list = await api('/admin/categories');
+  main.innerHTML = `<h1>Catégories</h1><div class="card scroll"><table><thead><tr><th>Nom</th><th>Slug</th><th class="num">Ordre</th><th class="num">Produits</th><th>Active</th><th></th></tr></thead><tbody>
+    ${list.map((c) => `<tr><td><input data-c="${c.id}" data-f="name" value="${esc(c.name)}" aria-label="Nom"></td><td><input data-c="${c.id}" data-f="slug" value="${esc(c.slug)}" aria-label="Slug"></td><td><input data-c="${c.id}" data-f="sort" value="${c.sort}" style="width:70px" aria-label="Ordre"></td><td class="num">${c.count}</td><td><input type="checkbox" data-c="${c.id}" data-f="active" ${c.active ? 'checked' : ''} aria-label="Active"></td>
+    <td><button class="ghost sm" data-save="${c.id}">Enregistrer</button> <button class="ghost sm" data-del="${c.id}">Supprimer</button></td></tr>`).join('')}</tbody></table></div>
+    <div class="card"><h2>Nouvelle catégorie</h2><div class="row"><input id="nc-name" placeholder="Nom"><input id="nc-desc" placeholder="Description (facultatif)"><button class="auto" id="nc-add">Ajouter</button></div></div>`;
+  const val = (id, f) => { const el = main.querySelector(`[data-c="${id}"][data-f="${f}"]`); return f === 'active' ? el.checked : el.value; };
+  main.querySelectorAll('[data-save]').forEach((b) => b.addEventListener('click', () => { const id = b.dataset.save; run(() => api('/admin/categories/' + id, { method: 'PUT', body: { name: val(id, 'name'), slug: val(id, 'slug'), sort: Number(val(id, 'sort')) || 0, active: val(id, 'active') } }), 'Catégorie enregistrée'); }));
+  main.querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', async () => { if (await ask('Supprimer cette catégorie ? Les produits resteront, sans catégorie.', 'Supprimer', true) && await run(() => api('/admin/categories/' + b.dataset.del, { method: 'DELETE' }))) route(); }));
+  $('#nc-add').addEventListener('click', async () => { if (await run(() => api('/admin/categories', { method: 'POST', body: { name: $('#nc-name').value, description: $('#nc-desc').value || null } }), 'Catégorie ajoutée')) route(); });
+}
+
+// ---------- Codes promo ----------
+async function vPromos(main) {
+  const list = await api('/admin/promos');
+  main.innerHTML = `<h1>Codes promo</h1><div class="card scroll">${list.length ? `<table><thead><tr><th>Code</th><th>Remise</th><th>Conditions</th><th>Validité</th><th class="num">Utilisations</th><th>État</th><th></th></tr></thead><tbody>
+   ${list.map((p) => `<tr><td><b>${esc(p.code)}</b></td><td>${p.type === 'percent' ? p.value + ' %' : eur(p.value)}</td><td class="small">${p.min_subtotal_cents ? 'dès ' + eur(p.min_subtotal_cents) : '—'}${p.per_user_limit ? ` · ${p.per_user_limit}/client` : ''}${p.premium_only ? ' · Premium' : ''}</td><td class="small">${fd(p.starts_at)} → ${fd(p.ends_at)}</td><td class="num">${p.uses}${p.max_uses ? ' / ' + p.max_uses : ''}</td><td>${p.active ? pill('Actif', 'ok') : pill('Inactif')}</td>
+   <td><button class="ghost sm" data-edit="${p.id}">Modifier</button> <button class="ghost sm" data-del="${p.id}">Supprimer</button></td></tr>`).join('')}</tbody></table>` : '<p class="muted">Aucun code.</p>'}</div>
+   <div class="card"><h2 id="pf-title">Nouveau code</h2><div class="row"><div><label>Code</label><input id="pf-code" placeholder="NOEL10"></div><div><label>Type</label><select id="pf-type"><option value="percent">Pourcentage</option><option value="fixed">Montant fixe (€)</option></select></div><div><label>Valeur (% ou €)</label><input id="pf-val" inputmode="decimal"></div></div>
+   <div class="row"><div><label>Montant minimum (€)</label><input id="pf-min" inputmode="decimal" placeholder="0"></div><div><label>Utilisations max. (total)</label><input id="pf-max" inputmode="numeric" placeholder="illimité"></div><div><label>Par client</label><input id="pf-per" inputmode="numeric" placeholder="illimité"></div></div>
+   <div class="row"><div><label>Début</label><input id="pf-start" type="date"></div><div><label>Fin</label><input id="pf-end" type="date"></div></div>
+   <label class="check"><input type="checkbox" id="pf-prem"> Réservé aux membres Premium</label><label class="check"><input type="checkbox" id="pf-act" checked> Actif</label><p><button id="pf-save">Enregistrer</button> <button class="ghost" id="pf-reset">Nouveau</button></p></div>`;
+  let editing = null;
+  const fill = (p) => { editing = p ? p.id : null; $('#pf-title').textContent = p ? 'Modifier ' + p.code : 'Nouveau code'; $('#pf-code').value = p ? p.code : ''; $('#pf-type').value = p ? p.type : 'percent'; $('#pf-val').value = p ? (p.type === 'percent' ? p.value : euroIn(p.value)) : '';
+    $('#pf-min').value = p && p.min_subtotal_cents ? euroIn(p.min_subtotal_cents) : ''; $('#pf-max').value = p && p.max_uses != null ? p.max_uses : ''; $('#pf-per').value = p && p.per_user_limit != null ? p.per_user_limit : ''; $('#pf-start').value = p ? dateIn(p.starts_at) : ''; $('#pf-end').value = p ? dateIn(p.ends_at) : ''; $('#pf-prem').checked = p ? !!p.premium_only : false; $('#pf-act').checked = p ? !!p.active : true; };
+  main.querySelectorAll('[data-edit]').forEach((b) => b.addEventListener('click', () => { fill(list.find((p) => p.id === b.dataset.edit)); $('#pf-code').scrollIntoView({ behavior: 'smooth' }); }));
+  main.querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', async () => { if (!(await ask('Supprimer ce code ? S’il a servi, il sera désactivé.', 'Supprimer', true))) return; if (await run(() => api('/admin/promos/' + b.dataset.del, { method: 'DELETE' }))) route(); }));
+  $('#pf-reset').addEventListener('click', () => fill(null));
+  $('#pf-save').addEventListener('click', async () => {
+    const type = $('#pf-type').value;
+    const body = { code: $('#pf-code').value.trim(), type, value: type === 'percent' ? Number($('#pf-val').value) : cents($('#pf-val').value), min_subtotal_cents: $('#pf-min').value ? cents($('#pf-min').value) : 0,
+      max_uses: $('#pf-max').value ? Number($('#pf-max').value) : null, per_user_limit: $('#pf-per').value ? Number($('#pf-per').value) : null, starts_at: tsFrom($('#pf-start').value), ends_at: tsFrom($('#pf-end').value, true), premium_only: $('#pf-prem').checked, active: $('#pf-act').checked };
+    if (await run(() => api(editing ? '/admin/promos/' + editing : '/admin/promos', { method: editing ? 'PUT' : 'POST', body }), 'Code enregistré')) route();
+  });
+}
+
+// ---------- Livraison ----------
+async function vShipping(main) {
+  const s = await api('/admin/shipping');
+  const kind = { pickup: 'Retrait sur place', radius: 'Rayon autour de l’atelier', postal: 'Liste de codes postaux' };
+  main.innerHTML = `<h1>Livraison</h1>
+  <div class="cols"><div class="card"><h2>Position de l'atelier</h2><p class="small muted">Point de départ du calcul de distance pour les zones « rayon ». Coordonnées décimales (WGS84).</p>
+    <div class="row"><div><label>Latitude</label><input id="or-lat" value="${s.origin.lat ?? ''}" inputmode="decimal"></div><div><label>Longitude</label><input id="or-lng" value="${s.origin.lng ?? ''}" inputmode="decimal"></div><button class="auto" id="or-save">Enregistrer</button></div>
+    ${s.origin.lat == null ? '<div class="notice err">Position non configurée : les zones « rayon » sont indisponibles.</div>' : ''}</div>
+  <div class="card"><h2>Codes postaux localisés : ${s.postcodes_count}</h2><p class="small muted">Nécessaires pour calculer la distance d'un code postal. Importez le fichier belge GeoNames <b>BE.txt</b> (licence CC BY 4.0, archive BE.zip sur download.geonames.org/export/zip/) ou un CSV « code,latitude,longitude ». Géocodage automatique Nominatim : ${s.geocoder === 'nominatim' ? 'activé (mise en cache)' : 'désactivé'}.</p>
+    <div class="row"><input id="pc-file" type="file" accept=".txt,.csv,.tsv"><button class="auto ghost" id="pc-import">Importer</button></div>
+    <div class="row"><div><label>Code postal</label><input id="pc-code" maxlength="4"></div><div><label>Latitude</label><input id="pc-lat"></div><div><label>Longitude</label><input id="pc-lng"></div><button class="auto ghost" id="pc-add">Ajouter</button></div>
+    <h3 style="margin-top:14px">Tester un code postal</h3><div class="row"><input id="t-pc" maxlength="4" placeholder="ex. 1300"><button class="auto ghost" id="t-go">Tester</button></div><div id="t-res"></div></div></div>
+  <div class="card scroll"><h2>Zones</h2><table><thead><tr><th>Nom</th><th>Règle</th><th class="num">Prix</th><th class="num">Offerte dès</th><th>État</th><th></th></tr></thead><tbody>
+    ${s.zones.map((z) => `<tr><td><b>${esc(z.name)}</b><br><span class="small muted">${esc(z.description || '')}</span></td><td>${esc(kind[z.kind])}${z.kind === 'radius' ? ` : ${z.radius_km} km` : ''}${z.kind === 'postal' ? `<br><span class="small muted">${esc(z.postal_codes)}</span>` : ''}</td><td class="num">${eur(z.price_cents)}</td><td class="num">${z.free_above_cents != null ? eur(z.free_above_cents) : '—'}</td><td>${z.active ? pill('Active', 'ok') : pill('Inactive')}</td>
+    <td><button class="ghost sm" data-edit="${z.id}">Modifier</button> <button class="ghost sm" data-del="${z.id}">Supprimer</button></td></tr>`).join('') || '<tr><td colspan="6" class="muted">Aucune zone : les clients ne peuvent pas commander d’objets physiques.</td></tr>'}</tbody></table></div>
+  <div class="card"><h2 id="zf-title">Nouvelle zone</h2><div class="row"><div><label>Nom</label><input id="zf-name" placeholder="Livraison locale"></div><div><label>Type</label><select id="zf-kind">${Object.entries(kind).map(([k, l]) => `<option value="${k}">${l}</option>`).join('')}</select></div><div><label>Rayon (km)</label><input id="zf-rad" value="30" inputmode="decimal"></div></div>
+    <label>Codes postaux (ex. « 1000-1210, 1300, 1310 »)</label><input id="zf-pcs"><label>Description affichée au client</label><input id="zf-desc">
+    <div class="row"><div><label>Prix (€)</label><input id="zf-price" inputmode="decimal" value="0"></div><div><label>Offerte dès (€, facultatif)</label><input id="zf-free" inputmode="decimal"></div><div><label>Ordre</label><input id="zf-sort" inputmode="numeric" value="0"></div></div>
+    <label class="check"><input type="checkbox" id="zf-act" checked> Active</label><p><button id="zf-save">Enregistrer</button> <button class="ghost" id="zf-new">Nouveau</button></p></div>`;
+  let editing = null;
+  const fill = (z) => { editing = z ? z.id : null; $('#zf-title').textContent = z ? 'Modifier ' + z.name : 'Nouvelle zone'; $('#zf-name').value = z ? z.name : ''; $('#zf-kind').value = z ? z.kind : 'pickup'; $('#zf-rad').value = z && z.radius_km ? z.radius_km : 30; $('#zf-pcs').value = z ? z.postal_codes || '' : ''; $('#zf-desc').value = z ? z.description || '' : ''; $('#zf-price').value = z ? euroIn(z.price_cents) : '0'; $('#zf-free').value = z && z.free_above_cents != null ? euroIn(z.free_above_cents) : ''; $('#zf-sort').value = z ? z.sort : 0; $('#zf-act').checked = z ? !!z.active : true; };
+  main.querySelectorAll('[data-edit]').forEach((b) => b.addEventListener('click', () => { fill(s.zones.find((z) => z.id === b.dataset.edit)); $('#zf-name').scrollIntoView({ behavior: 'smooth' }); }));
+  main.querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', async () => { if (await ask('Supprimer cette zone ?', 'Supprimer', true) && await run(() => api('/admin/shipping/zones/' + b.dataset.del, { method: 'DELETE' }))) route(); }));
+  $('#zf-new').addEventListener('click', () => fill(null));
+  $('#zf-save').addEventListener('click', async () => { const body = { name: $('#zf-name').value, kind: $('#zf-kind').value, radius_km: $('#zf-kind').value === 'radius' ? Number($('#zf-rad').value.replace(',', '.')) : null, postal_codes: $('#zf-pcs').value || null, description: $('#zf-desc').value || null, price_cents: cents($('#zf-price').value || '0'), free_above_cents: $('#zf-free').value ? cents($('#zf-free').value) : null, sort: Number($('#zf-sort').value) || 0, active: $('#zf-act').checked };
+    if (await run(() => api(editing ? '/admin/shipping/zones/' + editing : '/admin/shipping/zones', { method: editing ? 'PUT' : 'POST', body }), 'Zone enregistrée')) route(); });
+  $('#or-save').addEventListener('click', async () => { if (await run(() => api('/admin/shipping/origin', { method: 'PUT', body: { lat: $('#or-lat').value.replace(',', '.'), lng: $('#or-lng').value.replace(',', '.') } }), 'Position enregistrée')) route(); });
+  $('#pc-import').addEventListener('click', async () => { const f = $('#pc-file').files[0]; if (!f) return; const fd = new FormData(); fd.append('file', f); const r = await run(() => api('/admin/shipping/postcodes/import', { method: 'POST', body: fd })); if (r) { toast(`${r.imported} codes postaux importés`); route(); } });
+  $('#pc-add').addEventListener('click', async () => { if (await run(() => api('/admin/shipping/postcodes', { method: 'POST', body: { code: $('#pc-code').value, lat: $('#pc-lat').value.replace(',', '.'), lng: $('#pc-lng').value.replace(',', '.') } }), 'Code postal ajouté')) route(); });
+  $('#t-go').addEventListener('click', async () => { const r = await run(() => api('/admin/shipping/test', { method: 'POST', body: { postal_code: $('#t-pc').value } })); if (r) $('#t-res').innerHTML = `<table><tbody>${r.map((z) => `<tr><td>${esc(z.name)}</td><td>${z.eligible ? pill('Disponible', 'ok') : pill(z.reason || 'Non', 'err')}</td><td class="num">${z.distance_km != null ? z.distance_km + ' km' : ''}</td></tr>`).join('')}</tbody></table>`; });
+}
+
+// ---------- Sur mesure ----------
+async function vCustom(main) {
+  const list = await api('/admin/custom-requests');
+  const L = { submitted: ['À chiffrer', 'warn'], quoted: ['Devis envoyé', ''], accepted: ['Accepté (paiement en attente)', ''], paid: ['Payé', 'ok'], rejected: ['Refusé', 'err'], cancelled: ['Annulé', ''] };
+  main.innerHTML = `<h1>Commandes sur mesure</h1>${list.length ? list.map((c) => `<div class="card"><div class="row" style="justify-content:space-between"><h2 class="auto">${esc(c.title)}</h2><span class="auto">${pill(...(L[c.status] || [c.status]))}</span></div>
+    <p class="small muted">${fdt(c.created_at)} · <a href="#customers-${c.user_id}">${esc(c.customer)}</a> (${esc(c.email)}) · ${c.quantity} pièce(s) · ${esc(c.material || 'matériau libre')} · ${esc(c.color || 'couleur libre')}${c.dimensions ? ' · ' + esc(c.dimensions) : ''}</p>
+    <p style="white-space:pre-line">${esc(c.description)}</p>
+    ${c.files.length ? `<p>Fichiers : ${c.files.map((f) => `<a href="/api/admin/custom-files/${c.id}/${f.id}">${esc(f.original_name)}</a> <span class="small muted">(${(f.size / 1048576).toFixed(2)} Mo)</span>`).join(' · ')}</p>` : ''}
+    ${c.quote_cents ? `<p>Devis : <b>${eur(c.quote_cents)}</b> · ${c.quote_days} j${c.quote_message ? ' · ' + esc(c.quote_message) : ''}</p>` : ''}
+    ${c.order_number ? `<p>Commande : <b>${esc(c.order_number)}</b></p>` : ''}
+    ${['submitted', 'quoted'].includes(c.status) ? `<div class="row"><div><label>Prix TVAC (€)</label><input id="q-p-${c.id}" inputmode="decimal" value="${euroIn(c.quote_cents)}"></div><div><label>Délai (jours)</label><input id="q-d-${c.id}" inputmode="numeric" value="${c.quote_days || ''}"></div></div>
+      <label>Message au client</label><input id="q-m-${c.id}" value="${esc(c.quote_message || '')}"><p><button data-quote="${c.id}">${c.status === 'quoted' ? 'Mettre à jour le devis' : 'Envoyer le devis'}</button> <button class="ghost" data-reject="${c.id}">Refuser</button></p>` : ''}</div>`).join('') : '<p class="muted">Aucune demande.</p>'}`;
+  main.querySelectorAll('[data-quote]').forEach((b) => b.addEventListener('click', async () => { const id = b.dataset.quote; const body = { quote_cents: cents($('#q-p-' + id).value), quote_days: Number($('#q-d-' + id).value), quote_message: $('#q-m-' + id).value || undefined };
+    if (await run(() => api(`/admin/custom-requests/${id}/quote`, { method: 'POST', body }), 'Devis envoyé au client')) route(); }));
+  main.querySelectorAll('[data-reject]').forEach((b) => b.addEventListener('click', async () => { if (!(await ask('Refuser cette demande ? Le client sera prévenu par e-mail.', 'Refuser', true))) return; if (await run(() => api(`/admin/custom-requests/${b.dataset.reject}/reject`, { method: 'POST', body: { message: $('#q-m-' + b.dataset.reject).value || undefined } }), 'Demande refusée')) route(); }));
+}
+
+// ---------- Demandes de remboursement ----------
+async function vRefunds(main) {
+  const list = await api('/admin/refund-requests');
+  main.innerHTML = `<h1>Demandes de remboursement</h1>${list.length ? list.map((r) => `<div class="card"><div class="row" style="justify-content:space-between"><h2 class="auto"><a href="#orders-${r.order_id}">${esc(r.number)}</a> · ${esc(r.customer)}</h2><span class="auto">${pill({ open: 'À traiter', approved: 'Acceptée', rejected: 'Refusée' }[r.status], r.status === 'open' ? 'warn' : '')}</span></div>
+    <p class="small muted">${fdt(r.created_at)} · payé ${eur(r.total_cents)} · déjà remboursé ${eur(r.refunded_cents)}</p><p>${esc(r.reason)}</p>
+    ${r.status === 'open' ? `<div class="row"><div><label>Montant à rembourser (€)</label><input id="rr-a-${r.id}" inputmode="decimal" value="${euroIn(r.total_cents - r.refunded_cents)}"></div><div><label>Message au client</label><input id="rr-m-${r.id}"></div></div>
+    <label class="check"><input type="checkbox" id="rr-s-${r.id}"> Remettre en stock (solde complet uniquement)</label><p><button class="danger" data-ok="${r.id}">Rembourser</button> <button class="ghost" data-no="${r.id}">Refuser</button></p>` : r.admin_message ? `<p class="small">${esc(r.admin_message)}</p>` : ''}</div>`).join('') : '<p class="muted">Aucune demande.</p>'}`;
+  main.querySelectorAll('[data-ok]').forEach((b) => b.addEventListener('click', async () => { const id = b.dataset.ok; const amount = cents($('#rr-a-' + id).value); if (!(await ask(`Rembourser ${eur(amount)} via Stripe ?`, 'Rembourser', true))) return;
+    if (await run(() => api('/admin/refund-requests/' + id, { method: 'POST', body: { action: 'approve', amount_cents: amount, restock: $('#rr-s-' + id).checked, message: $('#rr-m-' + id).value || undefined } }), 'Remboursement effectué')) route(); }));
+  main.querySelectorAll('[data-no]').forEach((b) => b.addEventListener('click', async () => { const id = b.dataset.no; if (await run(() => api('/admin/refund-requests/' + id, { method: 'POST', body: { action: 'reject', message: $('#rr-m-' + id).value || undefined } }), 'Demande refusée')) route(); }));
+}
+
+// ---------- Clients ----------
+async function vCustomers(main, id) {
+  if (id) {
+    const u = await api('/admin/customers/' + id);
+    main.innerHTML = `<p><a href="#customers">← Clients</a></p><h1>${esc(u.name)} ${u.role === 'admin' ? pill('Admin', 'warn') : ''} ${u.disabled ? pill('Désactivé', 'err') : ''} ${u.premium ? pill('Premium', 'ok') : ''}</h1>
+     <div class="cols"><div class="card"><p>${esc(u.email)}<br>Inscrit le ${fd(u.created_at)} · e-mail ${u.email_verified_at ? 'confirmé' : 'non confirmé'}</p>
+       <p>Premium : ${esc(u.premium_status || 'aucun')}${u.premium_until ? ' jusqu’au ' + fd(u.premium_until) : ''}${u.premium_cancel_at_period_end ? ' (résiliation programmée)' : ''}</p>
+       <div class="row">${u.email_verified_at ? '' : '<button class="ghost auto" data-act="verify">Confirmer l’e-mail</button>'}<button class="ghost auto" data-act="${u.disabled ? 'enable' : 'disable'}">${u.disabled ? 'Réactiver' : 'Désactiver'} le compte</button>
+       <button class="ghost auto" data-act="${u.role === 'admin' ? 'demote' : 'promote'}">${u.role === 'admin' ? 'Retirer les droits admin' : 'Donner les droits admin'}</button>${u.premium_sub_id && u.premium_status !== 'canceled' ? '<button class="ghost auto" data-act="pcancel">Résilier Premium (fin de période)</button><button class="danger auto" data-act="pnow">Résilier Premium immédiatement</button>' : ''}</div></div>
+     <div class="card"><h2>Adresses</h2>${u.addresses.map((a) => `<p>${esc(a.name)}<br>${esc(a.line1)}, ${esc(a.postal_code)} ${esc(a.city)}</p>`).join('') || '<p class="muted">Aucune.</p>'}</div></div>
+     <div class="card scroll"><h2>Commandes</h2><table><tbody>${u.orders.map((o) => `<tr><td><a href="#orders-${o.id}">${esc(o.number)}</a></td><td>${fdt(o.created_at)}</td><td>${pill(STATUS[o.status] || o.status)}</td><td>${pill(...PAY[o.payment_status])}</td><td class="num">${eur(o.total_cents)}</td></tr>`).join('') || '<tr><td class="muted">Aucune.</td></tr>'}</tbody></table></div>`;
+    const acts = { verify: { verify_email: true }, enable: { disabled: false }, disable: { disabled: true }, promote: { role: 'admin' }, demote: { role: 'customer' } };
+    main.querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', async () => { const a = b.dataset.act;
+      if (a === 'pcancel' || a === 'pnow') { if (!(await ask(a === 'pnow' ? 'Résilier immédiatement l’abonnement Premium dans Stripe ?' : 'Programmer la résiliation à la fin de la période ?', 'Résilier', true))) return; if (await run(() => api(`/admin/customers/${id}/premium/cancel`, { method: 'POST', body: { immediately: a === 'pnow' } }), 'Abonnement mis à jour')) route(); return; }
+      if (['disable', 'promote', 'demote'].includes(a) && !(await ask('Confirmer cette modification du compte ?'))) return;
+      if (await run(() => api('/admin/customers/' + id, { method: 'PATCH', body: acts[a] }), 'Compte mis à jour')) route(); }));
+    return;
+  }
+  const q = sessionStorage.getItem('cq') || '';
+  const list = await api('/admin/customers?q=' + encodeURIComponent(q));
+  main.innerHTML = `<h1>Clients</h1><div class="row"><input id="c-q" placeholder="Nom ou e-mail" value="${esc(q)}"></div><div class="card scroll" style="margin-top:12px"><table><thead><tr><th>Client</th><th>Inscription</th><th>Statut</th><th class="num">Commandes</th><th class="num">Dépensé</th></tr></thead><tbody>
+    ${list.map((u) => `<tr class="click" data-id="${u.id}"><td><a href="#customers-${u.id}">${esc(u.name)}</a><br><span class="small muted">${esc(u.email)}</span></td><td>${fd(u.created_at)}</td><td>${u.role === 'admin' ? pill('Admin', 'warn') : ''} ${u.premium ? pill('Premium', 'ok') : ''} ${u.disabled ? pill('Désactivé', 'err') : ''} ${u.deleted_at ? pill('Supprimé') : ''} ${u.email_verified_at ? '' : pill('E-mail non confirmé')}</td><td class="num">${u.orders}</td><td class="num">${eur(u.spent_cents)}</td></tr>`).join('')}</tbody></table></div>`;
+  $('#c-q').addEventListener('keydown', (e) => { if (e.key === 'Enter') { sessionStorage.setItem('cq', e.target.value); route(); } });
+  main.querySelectorAll('tr[data-id]').forEach((tr) => tr.addEventListener('click', (e) => { if (!e.target.closest('a')) location.hash = 'customers-' + tr.dataset.id; }));
+}
+
+// ---------- Newsletter ----------
+async function vNewsletter(main) {
+  const d = await api('/admin/newsletter');
+  const conf = d.subscribers.filter((s) => s.status === 'confirmed').length;
+  main.innerHTML = `<h1>Newsletter · ${conf} abonné${conf > 1 ? 's' : ''} confirmé${conf > 1 ? 's' : ''}</h1><div class="cols">
+   <div class="card"><h2 id="cf-title">Nouvelle campagne</h2><label for="cf-sub">Objet</label><input id="cf-sub" maxlength="150"><label for="cf-body">Message (texte ; ligne vide = nouveau paragraphe)</label><textarea id="cf-body" style="min-height:200px"></textarea>
+     <p class="small muted">Un lien de désinscription personnel est ajouté automatiquement à chaque e-mail.</p><p><button id="cf-save" class="ghost">Enregistrer le brouillon</button></p>
+     <h2 style="margin-top:16px">Campagnes</h2><table><tbody>${d.campaigns.map((c) => `<tr><td><b>${esc(c.subject)}</b><br><span class="small muted">${c.status === 'sent' ? `Envoyée le ${fdt(c.sent_at)} à ${c.recipients} abonné(s)` : 'Brouillon'}</span></td><td>${c.status === 'draft' ? `<button class="ghost sm" data-edit="${c.id}">Modifier</button> <button class="ghost sm" data-test="${c.id}">M'envoyer un test</button> <button class="sm" data-send="${c.id}">Envoyer</button>` : ''}</td></tr>`).join('') || '<tr><td class="muted">Aucune campagne.</td></tr>'}</tbody></table></div>
+   <div class="card scroll"><h2>Abonnés</h2><table><thead><tr><th>E-mail</th><th>Statut</th><th>Depuis</th><th></th></tr></thead><tbody>${d.subscribers.map((s) => `<tr><td>${esc(s.email)}</td><td>${pill({ confirmed: 'Confirmé', pending: 'En attente', unsubscribed: 'Désinscrit' }[s.status], s.status === 'confirmed' ? 'ok' : '')}</td><td class="small">${fd(s.confirmed_at || s.created_at)}</td><td><button class="ghost sm" data-del="${s.id}" aria-label="Supprimer">✕</button></td></tr>`).join('')}</tbody></table></div></div>`;
+  let editing = null;
+  main.querySelectorAll('[data-edit]').forEach((b) => b.addEventListener('click', () => { const c = d.campaigns.find((x) => x.id === b.dataset.edit); editing = c.id; $('#cf-title').textContent = 'Modifier le brouillon'; $('#cf-sub').value = c.subject; $('#cf-body').value = c.body; }));
+  $('#cf-save').addEventListener('click', async () => { if (await run(() => api(editing ? '/admin/newsletter/campaigns/' + editing : '/admin/newsletter/campaigns', { method: editing ? 'PUT' : 'POST', body: { subject: $('#cf-sub').value, body: $('#cf-body').value } }), 'Brouillon enregistré')) route(); });
+  main.querySelectorAll('[data-test]').forEach((b) => b.addEventListener('click', () => run(() => api(`/admin/newsletter/campaigns/${b.dataset.test}/test`, { method: 'POST' }), 'Test envoyé à votre adresse')));
+  main.querySelectorAll('[data-send]').forEach((b) => b.addEventListener('click', async () => { if (!(await ask(`Envoyer cette campagne à ${conf} abonné(s) confirmé(s) ? L'envoi est définitif.`, 'Envoyer'))) return; const r = await run(() => api(`/admin/newsletter/campaigns/${b.dataset.send}/send`, { method: 'POST' })); if (r) { toast(`${r.recipients} e-mail(s) en file d'envoi`); route(); } }));
+  main.querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', async () => { if (await ask('Supprimer définitivement cet abonné ?', 'Supprimer', true) && await run(() => api('/admin/newsletter/subscribers/' + b.dataset.del, { method: 'DELETE' }))) route(); }));
+}
+
+// ---------- E-mails ----------
+async function vEmails(main) {
+  const list = await api('/admin/emails');
+  main.innerHTML = `<div class="row" style="justify-content:space-between"><h1 class="auto">E-mails envoyés</h1><button class="auto ghost" id="m-test">M'envoyer un e-mail de test</button></div>
+   <div class="card scroll"><table><thead><tr><th>Date</th><th>Destinataire</th><th>Objet</th><th>Statut</th><th></th></tr></thead><tbody>${list.map((m) => `<tr><td class="small">${fdt(m.created_at)}</td><td>${esc(m.to_addr)}</td><td>${esc(m.subject)}</td><td>${pill({ sent: 'Envoyé', queued: 'En file', failed: 'Échec' }[m.status], m.status === 'sent' ? 'ok' : m.status === 'failed' ? 'err' : 'warn')}${m.last_error ? `<br><span class="small muted">${esc(m.last_error)}</span>` : ''}</td><td>${m.status === 'failed' ? `<button class="ghost sm" data-retry="${m.id}">Réessayer</button>` : ''}</td></tr>`).join('')}</tbody></table></div>`;
+  $('#m-test').addEventListener('click', async () => { const r = await run(() => api('/admin/emails/test', { method: 'POST' })); if (r) toast(r.smtp_configured ? 'E-mail de test mis en file d’envoi' : 'SMTP non configuré : l’e-mail restera en file', !r.smtp_configured); route(); });
+  main.querySelectorAll('[data-retry]').forEach((b) => b.addEventListener('click', async () => { if (await run(() => api(`/admin/emails/${b.dataset.retry}/retry`, { method: 'POST' }), 'Remis en file')) route(); }));
+}
+
+// ---------- Paramètres ----------
+async function vSettings(main) {
+  const s = await api('/admin/settings');
+  const env = s._env;
+  main.innerHTML = `<h1>Paramètres</h1>
+   <div class="card"><h2>Configuration du serveur</h2><p>Stripe (clé secrète) : ${env.stripe ? pill('configuré', 'ok') : pill('manquant', 'err')} · Webhook Stripe : ${env.webhook ? pill('configuré', 'ok') : pill('manquant', 'err')} · SMTP : ${env.smtp ? pill('configuré', 'ok') : pill('manquant', 'err')}</p>
+     <p class="small muted">Ces valeurs se règlent par variables d'environnement (voir README). URL du site : ${esc(env.app_url)} · Endpoint webhook : ${esc(env.app_url)}/api/stripe/webhook</p></div>
+   <div class="cols"><div class="card"><h2>Boutique</h2><label>Nom</label><input id="s-shop_name" value="${esc(s.shop_name)}"><label>Accroche</label><input id="s-shop_tagline" value="${esc(s.shop_tagline)}">
+     <label>E-mail de contact</label><input id="s-contact_email" value="${esc(s.contact_email)}"><label>Adresse affichée</label><input id="s-shop_address" value="${esc(s.shop_address)}">
+     <label>Volume d'impression max. (mm)</label><input id="s-max_print_dimensions_mm" value="${esc(s.max_print_dimensions_mm)}"><label>Matériaux (séparés par des virgules)</label><input id="s-materials" value="${esc(s.materials.join(', '))}">
+     <label>Couleurs (séparées par des virgules)</label><input id="s-colors" value="${esc(s.colors.join(', '))}"><label>Seuil d'alerte de stock bas</label><input id="s-low_stock_threshold" inputmode="numeric" value="${s.low_stock_threshold}">
+     <label>Téléchargements autorisés par fichier STL acheté</label><input id="s-download_max_count" inputmode="numeric" value="${s.download_max_count}">
+     <label class="check"><input type="checkbox" id="s-require_email_verification" ${s.require_email_verification ? 'checked' : ''}> Exiger une adresse e-mail confirmée pour commander</label></div>
+   <div class="card"><h2>Premium</h2><label class="check"><input type="checkbox" id="s-premium_enabled" ${s.premium_enabled ? 'checked' : ''}> Programme Premium ouvert aux nouveaux abonnés</label>
+     <div class="row"><div><label>Prix (€)</label><input id="s-premium_price" inputmode="decimal" value="${euroIn(s.premium_price_cents)}"></div><div><label>Période</label><select id="s-premium_interval"><option value="month">Mensuel</option><option value="year" ${s.premium_interval === 'year' ? 'selected' : ''}>Annuel</option></select></div></div>
+     <label>Remise Premium (%)</label><input id="s-premium_discount_percent" inputmode="numeric" value="${s.premium_discount_percent}"><label class="check"><input type="checkbox" id="s-premium_free_shipping" ${s.premium_free_shipping ? 'checked' : ''}> Livraison offerte aux membres</label>
+     <p class="small muted">Un changement de prix s’applique aux nouveaux abonnements ; les abonnements existants gardent leur prix dans Stripe.</p>
+     <h2 style="margin-top:16px">Conditions générales de vente</h2><textarea id="s-terms_text" style="min-height:220px">${esc(s.terms_text)}</textarea></div></div>
+   <p><button id="s-save">Enregistrer les paramètres</button></p>`;
+  $('#s-save').addEventListener('click', () => {
+    const v = (k) => $('#s-' + k).value; const c = (k) => $('#s-' + k).checked; const list = (k) => v(k).split(',').map((x) => x.trim()).filter(Boolean);
+    run(() => api('/admin/settings', { method: 'PUT', body: { shop_name: v('shop_name'), shop_tagline: v('shop_tagline'), contact_email: v('contact_email'), shop_address: v('shop_address'), max_print_dimensions_mm: v('max_print_dimensions_mm'),
+      materials: list('materials'), colors: list('colors'), low_stock_threshold: Number(v('low_stock_threshold')), download_max_count: Number(v('download_max_count')), require_email_verification: c('require_email_verification'),
+      premium_enabled: c('premium_enabled'), premium_price_cents: cents(v('premium_price')), premium_interval: v('premium_interval'), premium_discount_percent: Number(v('premium_discount_percent')), premium_free_shipping: c('premium_free_shipping'), terms_text: v('terms_text') } }), 'Paramètres enregistrés');
+  });
+}
+
+// ---------- Journal ----------
+async function vAudit(main) {
+  const [a, ev] = await Promise.all([api('/admin/audit'), api('/admin/stripe-events')]);
+  main.innerHTML = `<h1>Journal</h1><div class="cols"><div class="card scroll"><h2>Actions des administrateurs</h2><table><tbody>${a.map((x) => `<tr><td class="small">${fdt(x.created_at)}</td><td>${esc(x.action)}<br><span class="small muted">${esc(x.email || '')} ${esc(x.ip || '')}</span></td><td class="small muted">${esc(x.details || '')}</td></tr>`).join('')}</tbody></table></div>
+   <div class="card scroll"><h2>Événements Stripe reçus</h2><table><tbody>${ev.map((x) => `<tr><td class="small">${fdt(x.received_at)}</td><td>${esc(x.type)}<br><span class="small muted">${esc(x.id)}</span></td><td>${pill(x.status, x.status === 'processed' ? 'ok' : x.status === 'failed' ? 'err' : 'warn')}${x.error ? `<br><span class="small muted">${esc(x.error)}</span>` : ''}</td></tr>`).join('') || '<tr><td class="muted">Aucun événement.</td></tr>'}</tbody></table></div></div>`;
+}
+
+const VIEWS = { dashboard: vDashboard, orders: vOrders, products: vProducts, categories: vCategories, promos: vPromos, shipping: vShipping, custom: vCustom, refunds: vRefunds, customers: vCustomers, newsletter: vNewsletter, emails: vEmails, settings: vSettings, audit: vAudit };
+
+function loginForm(msg) {
+  root.innerHTML = `<form class="card login" id="lf"><h1>Administration</h1>${msg ? `<div class="notice err">${esc(msg)}</div>` : ''}<label for="lf-e">E-mail</label><input id="lf-e" type="email" required autocomplete="username"><label for="lf-p">Mot de passe</label><input id="lf-p" type="password" required autocomplete="current-password"><p><button>Se connecter</button></p><p class="small"><a href="/">← Retour à la boutique</a></p></form>`;
+  $('#lf').addEventListener('submit', async (e) => { e.preventDefault(); try { const r = await api('/auth/login', { method: 'POST', body: { email: $('#lf-e').value, password: $('#lf-p').value } }); if (r.user.role !== 'admin') { await api('/auth/logout', { method: 'POST' }); return loginForm('Ce compte n’a pas les droits d’administration.'); } boot(); } catch (err) { loginForm(err.message); } });
+}
+async function boot() {
+  try { me = await api('/me'); } catch { me = null; }
+  if (!me || me.role !== 'admin') return loginForm(me ? 'Ce compte n’a pas les droits d’administration.' : '');
+  try { counts = (await api('/admin/stats?days=7')).to_process; } catch { counts = {}; }
+  route();
+}
+window.addEventListener('hashchange', () => { if (me && me.role === 'admin') route(); });
+boot();
+}
+</script>
+</body>
+</html>

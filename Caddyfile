@@ -1,5 +1,0 @@
-# Remplacez par votre nom de domaine (son enregistrement DNS A/AAAA doit pointer vers le serveur)
-boutique.exemple.be {
-	encode gzip
-	reverse_proxy hadrishop:3000
-}

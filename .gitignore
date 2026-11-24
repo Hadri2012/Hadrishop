@@ -1,5 +1,9 @@
 node_modules/
-data/
 dist/
 .env
-*.sqlite*
+functions/.env
+functions/.env.*
+!functions/.env.example
+*-credentials.json
+.firebase/
+firebase-debug.log
