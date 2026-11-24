@@ -1,0 +1,36 @@
+{
+  "name": "hadrishop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "HADRISHOP - boutique d'impressions 3D (Node.js, SQLite, Stripe Checkout)",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=22.9"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/server.js",
+    "create-admin": "node --env-file-if-exists=.env scripts/create-admin.js",
+    "seed-demo": "node --env-file-if-exists=.env scripts/seed-demo.js",
+    "import-postcodes": "node --env-file-if-exists=.env scripts/import-postcodes.js",
+    "build-artifact": "node scripts/build-artifact.js",
+    "test": "node --test --test-concurrency=1 test/*.test.js",
+    "test:e2e": "node scripts/build-artifact.js && node --test test-e2e/*.test.js"
+  },
+  "dependencies": {
+    "@fontsource/archivo": "^5.3.0",
+    "better-sqlite3": "^13.2.0",
+    "express": "^4.22.3",
+    "express-rate-limit": "^8.7.5",
+    "helmet": "^8.3.0",
+    "multer": "^2.5.0",
+    "nodemailer": "^10.6.1",
+    "stripe": "^23.2.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^25.18.1",
+    "sharp": "^0.35.5",
+    "supertest": "^7.3.2"
+  }
+}
