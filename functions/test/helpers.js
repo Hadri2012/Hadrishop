@@ -49,7 +49,7 @@ function setup(extra = {}) {
   transport.sendMail = async (m) => { sent.push(m); return orig(m); };
   const silent = { log() {}, warn() {}, error() {}, info() {} };
   const db = makeFakeFirestore();
-  const ctx = createApp({ db, storage: makeFakeStorage(), stripe, log: extra.log || silent,
+  const ctx = createApp({ db, storage: extra.filesInFirestore ? require('../src/lib/firestore-files').firestoreFiles(db) : makeFakeStorage(), stripe, log: extra.log || silent,
     config: { appUrl: 'http://localhost:3000', stripeWebhookSecret: WEBHOOK_SECRET, scrypt: { N: 1024, p: 1 }, mailTransport: transport,
       rateLimits: { login: 1000, register: 1000, mail: 1000, ...(extra.rateLimits || {}) }, ...(extra.config || {}) } });
   ctx.fakeStripe = stripe; ctx.sent = sent;

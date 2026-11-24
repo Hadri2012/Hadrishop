@@ -3,7 +3,8 @@
 // Les transactions sont sérialisées (verrou global) et imposent « lectures avant écritures », comme Firestore.
 const crypto = require('crypto');
 
-const clone = (v) => (v === undefined ? undefined : JSON.parse(JSON.stringify(v)));
+// Les Buffer (type « bytes » de Firestore) survivent à la copie, comme avec le vrai SDK.
+const clone = (v) => (v === undefined ? undefined : JSON.parse(JSON.stringify(v), (k, x) => (x && x.type === 'Buffer' && Array.isArray(x.data) ? Buffer.from(x.data) : x)));
 
 function makeFakeFirestore() {
   const data = new Map(); // chemin du document -> objet
@@ -65,6 +66,7 @@ function makeFakeFirestore() {
   }
 
   function applyWrite(w) {
+    for (const [k, v] of Object.entries(w.d || {})) if (Buffer.isBuffer(v) && v.length > 1048487) throw new Error(`Firestore : champ ${k} > 1 Mio`);
     const cur = data.get(w.ref.path);
     if (w.type === 'create') { if (cur !== undefined) { const e = new Error('ALREADY_EXISTS'); e.code = 6; throw e; } data.set(w.ref.path, clone(w.d)); }
     else if (w.type === 'set') {
@@ -82,6 +84,23 @@ function makeFakeFirestore() {
     doc: (p) => new DocRef(p),
     async getAll(...refs) { return refs.map(snap); },
     settings() {},
+    batch() {
+      const writes = [];
+      const b = {
+        set(ref, d, opts) { writes.push({ type: 'set', ref, d, opts }); return b; },
+        update(ref, d) { writes.push({ type: 'update', ref, d }); return b; },
+        create(ref, d) { writes.push({ type: 'create', ref, d }); return b; },
+        delete(ref) { writes.push({ type: 'delete', ref }); return b; },
+        async commit() {
+          if (writes.length > 500) throw new Error('Firestore : 500 écritures maximum par lot');
+          const size = writes.reduce((a, w) => a + (w.d ? JSON.stringify(w.d).length / 2.5 : 0), 0); // approx. (octets → JSON)
+          if (size > 10 * 1024 * 1024) throw new Error('Firestore : requête de plus de 10 Mio');
+          const backup = new Map(data);
+          try { for (const w of writes) applyWrite(w); } catch (e) { data.clear(); for (const [k, v] of backup) data.set(k, v); throw e; }
+        },
+      };
+      return b;
+    },
     async runTransaction(fn) {
       let release; const prev = lock; lock = new Promise((r) => { release = r; });
       await prev;

@@ -4,7 +4,8 @@ function bool(v, d) { if (v === undefined || v === '') return d; return /^(1|tru
 
 function loadConfig(overrides = {}) {
   const env = process.env;
-  const appUrl = (overrides.appUrl || env.APP_URL || 'http://localhost:5000').replace(/\/$/, '');
+  // RENDER_EXTERNAL_URL est fourni automatiquement par Render (adresse publique du service).
+  const appUrl = (overrides.appUrl || env.APP_URL || env.RENDER_EXTERNAL_URL || 'http://localhost:5000').replace(/\/$/, '');
   const cfg = {
     appUrl,
     extraOrigins: (env.EXTRA_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean),

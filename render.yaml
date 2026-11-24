@@ -1,0 +1,33 @@
+# Render Blueprint : https://render.com/docs/blueprint-spec
+# Service web gratuit (s'endort après 15 min sans visite ; ~1 min pour se réveiller).
+services:
+  - type: web
+    name: hadrishop
+    runtime: node
+    plan: free
+    region: frankfurt
+    rootDir: functions
+    buildCommand: npm ci --omit=dev
+    startCommand: node server.js
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      # Secrets : à saisir dans le tableau de bord Render (jamais dans le dépôt)
+      - key: FIREBASE_SERVICE_ACCOUNT
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: SMTP_URL
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      - key: ADMIN_NOTIFY_EMAIL
+        sync: false
+      - key: GEOCODER
+        value: none

@@ -2,10 +2,11 @@
 
 Boutique en ligne complète : catalogue, comptes clients, panier, paiements **Stripe Checkout**, livraison par codes postaux et rayon de 30 km, commandes sur mesure, vente de fichiers STL, Premium, newsletter et interface **/admin**.
 
-Hébergement **Firebase (forfait Blaze)** : une Cloud Function `api` (Express, région europe-west1) sert tout le site via Firebase Hosting ; données dans **Cloud Firestore**, fichiers dans **Cloud Storage** ; une fonction planifiée `jobs` tourne chaque minute (libération des réservations expirées, envoi des e-mails, nettoyage). Toute la logique sensible s'exécute côté serveur ; les règles Firestore/Storage interdisent tout accès direct depuis les navigateurs.
+Hébergement gratuit **Render + Firestore** (section 3), ou **Firebase Blaze** (section 3 bis) : une Cloud Function `api` (Express, région europe-west1) sert tout le site via Firebase Hosting ; données dans **Cloud Firestore**, fichiers dans **Cloud Storage** ; une fonction planifiée `jobs` tourne chaque minute (libération des réservations expirées, envoi des e-mails, nettoyage). Toute la logique sensible s'exécute côté serveur ; les règles Firestore/Storage interdisent tout accès direct depuis les navigateurs.
 
 ```
-firebase.json              configuration (Hosting → fonction api, règles)
+render.yaml                Render (serveur gratuit)
+firebase.json              configuration Firebase Blaze (Hosting → fonction api, règles)
 firestore.rules            accès direct interdit
 storage.rules              accès direct interdit
 hosting/robots.txt
@@ -45,7 +46,37 @@ functions/                 code serveur + pages (public/index.html, public/admin
 - **Web** : protection CSRF (en-tête dédié + contrôle d'origine), CSP stricte (scripts autorisés par empreinte SHA-256, aucun `unsafe-inline` pour les scripts), `frame-ancestors 'none'`, téléversements validés par leur contenu réel (une image SVG/HTML déguisée est refusée), fichiers privés jamais servis publiquement, erreurs internes masquées.
 - **Admin** : toutes les routes `/api/admin/*` exigent le rôle admin (test automatique sur chaque route), actions sensibles journalisées.
 
-## 3. Mise en ligne (une seule fois)
+## 3. Mise en ligne gratuite, sans carte bancaire : Render + Firestore
+
+- **Serveur** : Render, service web gratuit (`render.yaml`). Il s'endort après 15 min sans visite ; le visiteur suivant attend environ 1 minute.
+- **Données et fichiers** : Firestore, projet Firebase gratuit **Spark** (aucun moyen de paiement). Les images et STL sont stockés dans Firestore, découpés en morceaux (Cloud Storage exige le forfait payant).
+
+**A. Firebase (sans carte)** — https://console.firebase.google.com
+1. Créer un projet (rester sur le forfait gratuit Spark).
+2. Firestore Database › Créer une base › **mode production** › emplacement en Europe (ex. `eur3` ou `europe-west1`). Le mode production interdit tout accès direct depuis les navigateurs.
+3. ⚙️ Paramètres du projet › Comptes de service › **Générer une nouvelle clé privée** → un fichier JSON se télécharge. **Ne le commitez jamais.**
+
+**B. Render (sans carte)** — https://render.com
+1. S'inscrire avec GitHub.
+2. New › **Blueprint** › choisir le dépôt `hadrishop` (Render lit `render.yaml`).
+3. Remplir les valeurs demandées :
+
+| Variable | Valeur |
+|---|---|
+| `FIREBASE_SERVICE_ACCOUNT` | tout le contenu du fichier JSON de l'étape A.3 |
+| `ADMIN_EMAIL` | votre adresse : ce compte devient administrateur dès qu'il confirme son e-mail |
+| `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` | clés Stripe de test (étape 5) |
+| `SMTP_URL`, `MAIL_FROM`, `ADMIN_NOTIFY_EMAIL` | e-mails (étape 6) |
+
+4. Le site est en ligne sur `https://hadrishop.onrender.com` (ou le nom affiché par Render). L'adresse est détectée automatiquement (`RENDER_EXTERNAL_URL`) ; mettez `APP_URL` seulement pour un nom de domaine à vous.
+5. Premier administrateur : créer un compte avec l'adresse `ADMIN_EMAIL`, cliquer le lien de confirmation, ouvrir `/admin`.
+
+Chaque `push` sur `main` redéploie automatiquement. Sans clé Stripe, la boutique refuse tout paiement (aucun paiement n'est simulé).
+
+**Limites de l'offre gratuite** : Firestore gratuit = 1 Gio de données (fichiers compris), 50 000 lectures et 20 000 écritures par jour ; au-delà, Firestore est coupé jusqu'à la fin de la période. Render gratuit = mise en veille, bande passante limitée. Les tâches de fond (réservations, e-mails) tournent chaque minute uniquement quand le serveur est éveillé ; le stock est de toute façon revérifié à chaque achat (une réservation expirée ne bloque jamais un article).
+
+## 3 bis. Variante Firebase Blaze (carte bancaire requise)
+
 
 Tout se fait dans le navigateur ; ensuite, chaque `push` sur `main` teste et redéploie automatiquement.
 
@@ -119,7 +150,7 @@ Tout fournisseur SMTP convient. Les e-mails sont mis en file d'attente dans Fire
 ```bash
 cd functions
 npm ci
-npm test          # 48 tests API : paiement, concurrence, webhooks, remboursements, sécurité, fonctionnalités
+npm test          # 50 tests API : paiement, concurrence, webhooks, remboursements, sécurité, fonctionnalités
 npm run test:e2e  # 5 tests dans Chrome (CHROME_PATH=/chemin/vers/chrome si besoin)
 ```
 Les tests utilisent un faux client Stripe (aucun appel réseau, aucun paiement) ; les webhooks sont signés et vérifiés avec la vraie bibliothèque Stripe. Ils tournent aussi sur GitHub avant chaque déploiement.
@@ -136,6 +167,10 @@ Le forfait Blaze inclut des quotas gratuits (Functions, Firestore, Storage, Host
 - Remplacer le catalogue et les illustrations d'exemple par vos produits et photos.
 
 ## Sources
+
+- Firebase — forfait Spark sans moyen de paiement, quotas Firestore : https://firebase.google.com/pricing
+- Firebase — Cloud Storage exige Blaze : https://firebase.google.com/docs/storage/faqs-storage-changes-announced-sept-2024
+- Render — offre gratuite (veille après 15 min, base Postgres temporaire) : https://render.com/docs/free
 
 - Stripe — expiration des sessions Checkout (30 min minimum) : https://docs.stripe.com/payments/checkout/abandoned-carts
 - Stripe — gestion d'un stock limité et expiration manuelle : https://docs.stripe.com/payments/checkout/managing-limited-inventory
